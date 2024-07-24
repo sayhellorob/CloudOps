@@ -1,0 +1,41 @@
+name: Backup Repository to S3
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install AWS CLI
+        uses: unfor19/install-aws-cli-action@v1
+        with:
+          version: 2
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/YourRoleName
+          aws-region: your-region
+
+      - name: Archive repository
+        run: |
+          REPO_NAME=$(echo "${GITHUB_REPOSITORY}" | awk -F'/' '{print $2}')
+          TIMESTAMP=$(date +%F_%T)
+          BACKUP_FILE="${REPO_NAME}_backup_${TIMESTAMP}.tar.gz"
+          git archive --format=tar.gz -o "$BACKUP_FILE" HEAD
+          echo "Backup file created: $BACKUP_FILE"
+
+      - name: Upload backup to S3
+        run: |
+          REPO_NAME=$(echo "${GITHUB_REPOSITORY}" | awk -F'/' '{print $2}')
+          TIMESTAMP=$(date +%F_%T)
+          BACKUP_FILE="${REPO_NAME}_backup_${TIMESTAMP}.tar.gz"
+          aws s3 cp "$BACKUP_FILE" s3://your-bucket-name/
