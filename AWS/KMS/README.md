@@ -1,6 +1,3 @@
-Here’s a sample `README.md` file for your script:
-
-```markdown
 # KMS Key Permissions Report Script
 
 This Bash script generates a report of AWS Identity and Access Management (IAM) role permissions related to AWS Key Management Service (KMS) keys in your AWS account. The script checks both Multi-Region and Single-Region KMS keys to identify which IAM roles have access to them and what specific actions are allowed.
