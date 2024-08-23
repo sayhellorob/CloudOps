@@ -51,10 +51,6 @@ Before running this script, ensure you have the following:
    - **KMS Key ARN**: The Amazon Resource Name (ARN) of the KMS key.
    - **Permissions/Actions**: The specific actions the policy allows on the KMS key.
 
-## Contributing
-
-If you would like to contribute to this project, please fork the repository and submit a pull request with your proposed changes.
-
 ### Instructions:
 - Replace placeholders such as `yourusername`, `your-repo-name`, and `your.email@example.com` with your actual GitHub username, repository name, and contact email.
 - Ensure that the `LICENSE` file is added if you're including a license.
