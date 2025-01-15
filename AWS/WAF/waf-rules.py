@@ -2,7 +2,7 @@
 AWS WAF ACL Rules Script
 
 This script lists the rules enabled in AWS WAF ACLs for a specified scope (REGIONAL or CLOUDFRONT)
-and generates a JSON file with the details.
+and generates a JSON file with the details. The JSON file name includes the AWS account ID.
 
 ## Prerequisites:
 1. Ensure Python 3.x is installed.
@@ -16,7 +16,7 @@ and generates a JSON file with the details.
    - `python script.py --region us-east-1 --scope REGIONAL`
    - `python script.py --scope CLOUDFRONT`
 2. If no region or scope is specified, you will be prompted to provide them.
-3. The script will generate a JSON file named `waf_acls_<scope>_<region>.json` with the WAF ACL details.
+3. The script will generate a JSON file named `<account-id>_waf_acls_<scope>_<region>.json`.
 
 """
 
@@ -24,12 +24,21 @@ import boto3
 import json
 import argparse
 
+def get_account_id():
+    """Retrieve the AWS account ID using the STS client."""
+    sts_client = boto3.client('sts')
+    account_id = sts_client.get_caller_identity()["Account"]
+    return account_id
+
 def list_waf_acls_and_rules(scope, region):
     # Initialize the AWS WAF client
     client = boto3.client('wafv2', region_name=region)
     output_data = {"Scope": scope, "Region": region, "WebACLs": []}
 
     try:
+        # Retrieve the account ID
+        account_id = get_account_id()
+
         # List all WAF Web ACLs
         response = client.list_web_acls(Scope=scope)
         web_acls = response.get('WebACLs', [])
@@ -80,7 +89,7 @@ def list_waf_acls_and_rules(scope, region):
             output_data["WebACLs"].append(acl_data)
 
         # Write the output data to a JSON file
-        output_file = f"waf_acls_{scope}_{region}.json"
+        output_file = f"{account_id}_waf_acls_{scope}_{region}.json"
         with open(output_file, "w") as json_file:
             json.dump(output_data, json_file, indent=4)
         print(f"\nDetails saved to {output_file}")
