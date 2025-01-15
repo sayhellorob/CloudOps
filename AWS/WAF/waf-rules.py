@@ -15,7 +15,7 @@ and generates a JSON file with the details.
 1. To specify a region and scope via command-line arguments:
    - `python script.py --region us-east-1 --scope REGIONAL`
    - `python script.py --scope CLOUDFRONT`
-2. If no region is specified for `REGIONAL`, you will be prompted to select one.
+2. If no region or scope is specified, you will be prompted to provide them.
 3. The script will generate a JSON file named `waf_acls_<scope>_<region>.json` with the WAF ACL details.
 
 """
@@ -99,13 +99,31 @@ if __name__ == "__main__":
         "-s", "--scope",
         help="Specify the WAF scope: REGIONAL or CLOUDFRONT.",
         choices=["REGIONAL", "CLOUDFRONT"],
-        required=True
+        default=None
     )
     args = parser.parse_args()
 
     scope = args.scope
     region = args.region
 
+    # Prompt for scope if not provided
+    if not scope:
+        print("No scope specified. Please choose a scope:")
+        print("1. REGIONAL")
+        print("2. CLOUDFRONT")
+        try:
+            scope_choice = int(input("Enter the number of the scope: "))
+            if scope_choice == 1:
+                scope = "REGIONAL"
+            elif scope_choice == 2:
+                scope = "CLOUDFRONT"
+            else:
+                raise ValueError("Invalid scope choice")
+        except ValueError:
+            print("Invalid input. Exiting.")
+            exit(1)
+
+    # Handle region for REGIONAL scope
     if scope == "REGIONAL" and not region:
         print("No region specified. Please choose a region:")
         regions = [
