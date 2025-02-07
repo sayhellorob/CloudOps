@@ -1,9 +1,13 @@
 """
-AWS Internet-Facing Report Script
+AWS Internet-Facing Resources Report Script
+===========================================
 
-This script scans all accessible AWS regions for publicly accessible resources and generates a report.
-The report includes details about EC2 instances, RDS instances, Classic ELBs, ALBs/NLBs, API Gateways,
-ECS/ECS Fargate services, EKS clusters, Lambda functions, CloudFront distributions, and S3 buckets.
+This script scans an AWS account to identify internet-facing resources across 
+various AWS services. It collects data on publicly accessible EC2 instances, 
+RDS instances, Classic ELBs, ALBs/NLBs, API Gateways, ECS/ECS Fargate services, 
+EKS clusters, Internet Gateways, Lambda functions, VPC Peering connections, 
+Transit Gateways, CloudFront distributions, and S3 buckets. The identified 
+resources and their details are compiled into a CSV report.
 
 The script performs the following tasks:
 1. Retrieves a list of all accessible AWS regions.
