@@ -1,0 +1,45 @@
+name: Check ALLOWED_DOMAINS in Repos
+
+on:
+  workflow_dispatch:  # ✅ Allows manual execution from GitHub UI
+  schedule:
+    - cron: "0 2 * * 1"  # Runs every Monday at 2 AM UTC
+  # push:
+  #   branches:
+  #     - main  
+
+jobs:
+  scan_repos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: pip install requests tldextract
+
+      - name: Test API Access
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_ORG_NAME: ${{ vars.GH_ORG_NAME }}
+        run: |
+          curl -H "Authorization: token $GH_TOKEN" https://api.github.com/orgs/$GH_ORG_NAME/repos
+          
+      - name: Run Domain Scan
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_ORG_NAME: ${{ vars.GH_ORG_NAME }}
+          # DEBUG_REPO: "example_repo" # Only scan this repo / Clear value for Prod
+        run: python scripts/allowed_domains_scan.py
+        continue-on-error: true  # Go to next steps to run even if this fails
+
+      - name: Upload Unauthorized Domains Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: unauthorized-domains-report
+          path: github_unauthorized_domains_report.csv
