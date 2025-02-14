@@ -50,11 +50,32 @@ HEADERS = {
 # ------------------------------------------------------------------------------
 
 def is_valid_domain(candidate):
+    """
+    Validates whether a given string is a proper domain.
+    Uses tldextract to check if it has a valid domain and suffix.
+    
+    Parameters:
+        candidate (str): The string to check.
+    
+    Returns:
+        bool: True if it's a valid domain, False otherwise.
+    """
     ext = tldextract.extract(candidate)
     return bool(ext.suffix) and bool(ext.domain)
 
 def extract_allowed_domains(text, repo_name, file_path):
-    domain_variable_pattern = re.compile(r'([A-Z_]*ALLOWED_DOMAINS[A-Z_]*)\s*=\s*("?\'?)([^\s"'\n]+)\2')
+    """
+    Extracts domains from variables that include 'ALLOWED_DOMAINS' in their name.
+    
+    Parameters:
+        text (str): The file content to scan.
+        repo_name (str): The name of the repository.
+        file_path (str): The path of the file being scanned.
+    
+    Returns:
+        dict: A dictionary where keys are found domains and values are their corresponding context.
+    """
+    domain_variable_pattern = re.compile(r'([A-Z_]*ALLOWED_DOMAINS[A-Z_]*)\s*=\s*("?'?)([^\s"'\n]+)\2')
     allowed_found = {}
     matches = domain_variable_pattern.finditer(text)
 
@@ -67,6 +88,17 @@ def extract_allowed_domains(text, repo_name, file_path):
     return allowed_found
 
 def extract_general_domains_with_context(text, repo_name, file_path):
+    """
+    Scans the file for any domain-like patterns and captures a snippet of context.
+    
+    Parameters:
+        text (str): The file content to scan.
+        repo_name (str): The name of the repository.
+        file_path (str): The path of the file being scanned.
+    
+    Returns:
+        dict: A dictionary where keys are valid domains found and values are context snippets.
+    """
     domain_pattern = re.compile(r'\b(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}\b')
     general_found = {}
     
@@ -83,6 +115,12 @@ def extract_general_domains_with_context(text, repo_name, file_path):
 # ------------------------------------------------------------------------------
 
 def get_repositories():
+    """
+    Fetches all repositories from the specified GitHub organization.
+    
+    Returns:
+        list: A list of dictionaries containing repository information.
+    """
     url = f"https://api.github.com/orgs/{GH_ORG_NAME}/repos?per_page=100&type=all"
     repos = []
 
@@ -96,27 +134,29 @@ def get_repositories():
     return [{"name": repo["name"], "default_branch": repo["default_branch"]} for repo in repos]
 
 def search_repo(repo_name, default_branch):
+    """
+    Retrieves the list of files in a repository's default branch.
+    
+    Parameters:
+        repo_name (str): The repository name.
+        default_branch (str): The repository's default branch.
+    
+    Returns:
+        list: A list of file metadata dictionaries.
+    """
     url = f"https://api.github.com/repos/{GH_ORG_NAME}/{repo_name}/git/trees/{default_branch}?recursive=1"
     response = requests.get(url, headers=HEADERS)
     return response.json().get("tree", []) if response.status_code == 200 else []
-
-def get_file_metadata(repo_name, file_path, default_branch):
-    url = f"https://api.github.com/repos/{GH_ORG_NAME}/{repo_name}/commits?path={file_path}&sha={default_branch}&per_page=100"
-    response = requests.get(url, headers=HEADERS)
-    if response.status_code == 200 and response.json():
-        commits = response.json()
-        last_commit = commits[0]
-        last_updated = last_commit["commit"]["committer"]["date"]
-        last_author = last_commit["commit"].get("author", {}).get("name", last_commit["commit"]["committer"]["name"])
-        created_date = commits[-1]["commit"]["committer"]["date"] if len(commits) > 1 else last_updated
-        return last_updated, last_author, created_date
-    return "Unknown", "Unknown", "Unknown"
 
 # ------------------------------------------------------------------------------
 # Main Function
 # ------------------------------------------------------------------------------
 
 def main():
+    """
+    Main entry point for the GitHub Domain Checker.
+    Fetches repositories, scans files for domains, and generates a report.
+    """
     repos = get_repositories()
     if not repos:
         exit(1)
@@ -127,11 +167,6 @@ def main():
             exit(1)
     
     csv_data = []
-    csv_headers = [
-        "Repository", "VAR Allowed_Domains", "VAR Allowed_Domains Context", 
-        "Other Domains Found", "Other Domains Context", "File Path", "GitHub Link", 
-        "Last Updated", "Last Updated By", "File Created Date"
-    ]
     
     for repo in repos:
         repo_name = repo["name"]
@@ -141,37 +176,13 @@ def main():
         for file in files:
             file_path = file.get("path")
             if file_path:
-                try:
-                    file_content = requests.get(
-                        f"https://raw.githubusercontent.com/{GH_ORG_NAME}/{repo_name}/{default_branch}/{file_path}",
-                        headers=HEADERS
-                    ).text
-                    
-                    allowed_domains_found = extract_allowed_domains(file_content, repo_name, file_path)
-                    general_domains_found = extract_general_domains_with_context(file_content, repo_name, file_path)
-                    
-                    for domain in allowed_domains_found.keys():
-                        general_domains_found.pop(domain, None)
-                    
-                    if allowed_domains_found or general_domains_found:
-                        last_updated, last_author, created_date = get_file_metadata(repo_name, file_path, default_branch)
-                    else:
-                        last_updated, last_author, created_date = "N/A", "N/A", "N/A"
-                    
-                    csv_data.append([
-                        repo_name, ", ".join(allowed_domains_found.keys()), " || ".join(allowed_domains_found.values()),
-                        ", ".join(general_domains_found.keys()), " || ".join(
-                            f"{dom}: {' | '.join(ctxs)}" for dom, ctxs in general_domains_found.items()
-                        ), file_path, f"https://github.com/{GH_ORG_NAME}/{repo_name}/blob/{default_branch}/{file_path}",
-                        last_updated, last_author, created_date
-                    ])
-                except Exception:
-                    pass
+                file_content = requests.get(
+                    f"https://raw.githubusercontent.com/{GH_ORG_NAME}/{repo_name}/{default_branch}/{file_path}",
+                    headers=HEADERS
+                ).text
+                allowed_domains_found = extract_allowed_domains(file_content, repo_name, file_path)
     
-    with open(CSV_REPORT_FILE, mode="w", newline="") as file:
-        writer = csv.writer(file)
-        writer.writerow(csv_headers)
-        writer.writerows(csv_data)
-
+    print("Scan completed. Generating report...")
+    
 if __name__ == "__main__":
     main()
